@@ -3,14 +3,14 @@ from datetime import datetime
 from datetime import date
 import csv
 import json
+import os
 
 HOST = "mqtt.darkflow.com.ar"
 PORT = 1883
 topic = "DeviceData/2448230"
 
-filename = "data-" + str(date.today()) + ".csv"
 flag_connected = False
-
+lastDay = date.today()
 
 def on_connect(client, userdata, flags, rc):
     global flag_connected
@@ -43,26 +43,28 @@ def createCSV():
 
 def on_message(client, userdata, message):
     try:
-        if flag_connected:
-            with open(filename, 'a', newline='') as file:
-                writer = csv.writer(file, delimiter=',')
-                try:
-                    msg = json.loads(message.payload.decode("utf-8"))
-                    timestamp = datetime.fromtimestamp(int(msg["Timestamp"]))
-                    # "\"" +  msg["Value"][0]["Value"] + "\""
-                    temperature = msg["Value"][0]["Value"]
-                    # "\"" + msg["Value"][1]["Value"] + "\""
-                    humidity = msg["Value"][1]["Value"]
-                    print(str(json.loads(message.payload.decode("utf-8"))))
-                    writer.writerow([str(timestamp),
-                                    temperature,
-                                    humidity
-                                    ])
-                except UnicodeDecodeError:
-                    pass
-        elif not(flag_connected):
-            print("Trying to reconnect...")
-            task()
+        currentDay = date.today()
+        if(lastDay == currentDay):
+            if flag_connected:
+                with open(filename, 'a', newline='') as file:
+                    writer = csv.writer(file, delimiter=',')
+                    try:
+                        msg = json.loads(message.payload.decode("utf-8"))
+                        timestamp = datetime.fromtimestamp(int(msg["Timestamp"]))
+                        # "\"" +  msg["Value"][0]["Value"] + "\""
+                        temperature = msg["Value"][0]["Value"]
+                        # "\"" + msg["Value"][1]["Value"] + "\""
+                        humidity = msg["Value"][1]["Value"]
+                        print(str(json.loads(message.payload.decode("utf-8"))))
+                        writer.writerow([str(timestamp),
+                                        temperature,
+                                        humidity
+                                        ])
+                    except UnicodeDecodeError:
+                        pass
+            elif not(flag_connected):
+                print("Trying to reconnect...")
+                task()
     except PermissionError:
         pass
 
@@ -73,19 +75,22 @@ mqttc.on_connect = on_connect
 mqttc.on_disconnect = on_disconnect
 
 def task():
-    lastDay = date.today()
+    os.system('cls')
     print("READING FROM " + topic)
     mqttc.connect(host=HOST, port=PORT, keepalive=100)
     mqttc.subscribe(topic, qos=0)
     while True:
         currentDay = date.today()
-        if(lastDay == currentDay):
-            mqttc.loop_start()
+        if lastDay == currentDay:
+            mqttc.loop()
         else:
-            lastDay = date.today()
             startTask()
             
 def startTask():
+    global lastDay
+    global filename
+    lastDay = date.today()
+    filename = "data-" + str(lastDay) + ".csv"
     createCSV()
     task()
 
