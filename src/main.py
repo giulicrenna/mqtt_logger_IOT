@@ -16,11 +16,9 @@ def on_connect(client, userdata, flags, rc):
     global flag_connected
     flag_connected = True
 
-
 def on_disconnect(client, userdata, rc):
     global flag_connected
     flag_connected = False
-
 
 def createCSV():
     try:
@@ -40,7 +38,6 @@ def createCSV():
             writer_ = csv.writer(file, delimiter=',')
             writer_.writerow(["timestamp", "temperature", "humidity"])
 
-
 def on_message(client, userdata, message):
     try:
         currentDay = date.today()
@@ -49,12 +46,15 @@ def on_message(client, userdata, message):
                 with open(filename, 'a', newline='') as file:
                     writer = csv.writer(file, delimiter=',')
                     try:
-                        msg = json.loads(message.payload.decode("utf-8"))
-                        timestamp = datetime.fromtimestamp(int(msg["Timestamp"]))
-                        # "\"" +  msg["Value"][0]["Value"] + "\""
-                        temperature = msg["Value"][0]["Value"]
-                        # "\"" + msg["Value"][1]["Value"] + "\""
-                        humidity = msg["Value"][1]["Value"]
+                        try:
+                            msg = json.loads(message.payload.decode("utf-8"))
+                            timestamp = datetime.fromtimestamp(int(msg["Timestamp"]))
+                            # "\"" +  msg["Value"][0]["Value"] + "\""
+                            temperature = msg["Value"][0]["Value"]
+                            # "\"" + msg["Value"][1]["Value"] + "\""
+                            humidity = msg["Value"][1]["Value"]
+                        except json.decoder.JSONDecodeError:
+                            pass
                         print(str(json.loads(message.payload.decode("utf-8"))))
                         writer.writerow([str(timestamp),
                                         temperature,
@@ -68,7 +68,6 @@ def on_message(client, userdata, message):
     except PermissionError:
         pass
 
-
 mqttc = mqtt.Client()
 mqttc.on_message = on_message
 mqttc.on_connect = on_connect
@@ -76,7 +75,8 @@ mqttc.on_disconnect = on_disconnect
 
 def task():
     os.system('cls')
-    print("READING FROM " + topic)
+    print("Reading from " + topic)
+    print("Writing to: " + filename)
     mqttc.connect(host=HOST, port=PORT, keepalive=100)
     mqttc.subscribe(topic, qos=0)
     while True:
